@@ -118,6 +118,12 @@
     <Filter Include="ソース ファイル\engine\3d\debug">
       <UniqueIdentifier>{04b2a4c7-a42a-4820-ac40-d8fb3b8d5cd5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\application\logic">
+      <UniqueIdentifier>{ad82d9fd-ccaf-469b-b828-be67fea05c9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\application\logic">
+      <UniqueIdentifier>{106ffae7-012d-4d7e-adcd-52bb918ac91b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -272,6 +278,12 @@
     </ClCompile>
     <ClCompile Include="engine\3d\debug\DebugLinePrimitive.cpp">
       <Filter>ソース ファイル\engine\3d\debug</Filter>
+    </ClCompile>
+    <ClCompile Include="application\logic\BaseLogic.cpp">
+      <Filter>ソース ファイル\application\logic</Filter>
+    </ClCompile>
+    <ClCompile Include="application\logic\LogicManager.cpp">
+      <Filter>ソース ファイル\application\logic</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -442,6 +454,18 @@
     </ClInclude>
     <ClInclude Include="engine\3d\debug\DebugLinePrimitive.h">
       <Filter>ヘッダー ファイル\engine\3d\debug</Filter>
+    </ClInclude>
+    <ClInclude Include="application\logic\BaseLogic.h">
+      <Filter>ヘッダー ファイル\application\logic</Filter>
+    </ClInclude>
+    <ClInclude Include="application\logic\LogicManager.h">
+      <Filter>ヘッダー ファイル\application\logic</Filter>
+    </ClInclude>
+    <ClInclude Include="application\logic\AbstractLogicFactory.h">
+      <Filter>ヘッダー ファイル\application\logic</Filter>
+    </ClInclude>
+    <ClInclude Include="application\logic\LogicName.h">
+      <Filter>ヘッダー ファイル\application\logic</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

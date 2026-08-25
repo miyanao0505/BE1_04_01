@@ -131,12 +131,6 @@ void GameScene::Draw() {
 
 #pragma endregion パーティクル
 
-#pragma region デバッグライン
-#ifdef _DEBUG
-	DebugLineManager::GetInstance()->DrawAll();
-#endif // _DEBUG
-#pragma endregion デバッグライン
-
 #pragma region スプライト
 
 	// Spriteの描画準備。Spriteの描画に共通のグラフィックスコマンドを積む

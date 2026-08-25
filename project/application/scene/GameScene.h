@@ -7,7 +7,6 @@
 #include "MyBase.h"
 #ifdef _DEBUG
 #include <imgui.h>
-#include "DebugLineManager.h"
 #endif // _DEBUG
 
 /// <summary>
