@@ -1,0 +1,362 @@
+#pragma once
+#include <cmath>
+#include <numbers>
+#include <assert.h>
+#include "MyBase.h"
+
+/// <summary>
+/// 行列演算ユーティリティクラス
+/// </summary>
+class Matrix
+{
+public:
+	/// 定数
+	static const int kRowHeight = 20;		// 縦
+	static const int kColumnWidth = 60;		// 横
+
+	/// 関数
+#pragma region 2x2の行列
+	
+	/// <summary>
+	/// 2x2回転行列の作成関数
+	/// </summary>
+	/// <param name="theta">角度(radian)</param>
+	/// <returns>回転行列</returns>
+	static MyBase::Matrix2x2 MakeRotateMatrix2x2(float theta);
+
+	/// <summary>
+	/// 2x2行列の加算を返す関数
+	/// </summary>
+	/// <param name="matrix1">行列A</param>
+	/// <param name="matrix2">行列B</param>
+	/// <returns>加算結果の行列</returns>
+	static MyBase::Matrix2x2 Add(const MyBase::Matrix2x2& matrix1, const MyBase::Matrix2x2& matrix2);
+	
+	/// <summary>
+	/// 2x2行列の減算を返す関数
+	/// </summary>
+	/// <param name="matrix1">行列A</param>
+	/// <param name="matrix2">行列B</param>
+	/// <returns>減算結果の行列</returns>
+	static MyBase::Matrix2x2 Subtract(const MyBase::Matrix2x2& matrix1, const MyBase::Matrix2x2& matrix2);
+	
+	/// <summary>
+	/// 2x2行列の積を返す関数
+	/// </summary>
+	/// <param name="matrix1">行列A</param>
+	/// <param name="matrix2">行列B</param>
+	/// <returns>積の行列</returns>
+	static MyBase::Matrix2x2 Multiply(const MyBase::Matrix2x2& matrix1, const MyBase::Matrix2x2& matrix2);
+	
+	/// <summary>
+	/// スカラーと2x2行列の積を返す関数
+	/// </summary>
+	/// <param name="scalar">スカラー値</param>
+	/// <param name="matrix">行列</param>
+	/// <returns>積の行列</returns>
+	static MyBase::Matrix2x2 Multiply(float scalar, const MyBase::Matrix2x2& matrix);
+	
+	/// <summary>
+	/// 2次元ベクトルと2x2行列の積を返す関数
+	/// </summary>
+	/// <param name="vector">ベクトル</param>
+	/// <param name="matrix">行列</param>
+	/// <returns>積のベクトル</returns>
+	static MyBase::Vector2 Multiply(const MyBase::Vector2& vector, const MyBase::Matrix2x2& matrix);
+	
+	/// <summary>
+	/// 2x2逆行列を取得する関数
+	/// </summary>
+	/// <param name="matrix">行列</param>
+	/// <returns>逆行列</returns>
+	static MyBase::Matrix2x2 Inverse(const MyBase::Matrix2x2& matrix);
+
+	/// <summary>
+	/// 2x2転置行列を取得する関数
+	/// </summary>
+	/// <param name="matrix">行列</param>
+	/// <returns>転置行列</returns>
+	static MyBase::Matrix2x2 Transpose(const MyBase::Matrix2x2& matrix);
+
+#pragma endregion 2x2の行列
+
+#pragma region 3x3の行列
+	
+	/// <summary>
+	/// 3x3拡縮行列の作成
+	/// </summary>
+	/// <param name="scale">拡縮の値</param>
+	/// <returns>拡縮行列</returns>
+	static MyBase::Matrix3x3 MakeScaleMatrix(const MyBase::Vector2& scale);
+
+	/// <summary>
+	/// 3x3回転行列の作成
+	/// </summary>
+	/// <param name="theta">角度(radian)</param>
+	/// <returns>回転行列</returns>
+	static MyBase::Matrix3x3 MakeRotateMatrix3x3(float theta);
+
+	/// <summary>
+	/// 3x3平行移動行列の作成関数
+	/// </summary>
+	/// <param name="translate">移動値</param>
+	/// <returns>平行移動行列</returns>
+	static MyBase::Matrix3x3 MakeTranslateMatrix(const MyBase::Vector2& translate);
+
+	/// <summary>
+	/// 2次元アフィン変換行列の作成
+	/// </summary>
+	/// <param name="scale">拡縮のベクトル</param>
+	/// <param name="rotate">角度のベクトル</param>
+	/// <param name="translate">移動のベクトル</param>
+	/// <returns>アフィン変換行列</returns>
+	static MyBase::Matrix3x3 MakeAffineMatrix(const MyBase::Vector2& scale, float rotate, const MyBase::Vector2& translate);
+
+	/// <summary>
+	/// 3x3正射影行列の作成
+	/// </summary>
+	/// <param name="left">左辺 X値</param>
+	/// <param name="top">上辺 Y値</param>
+	/// <param name="right">右辺 X値</param>
+	/// <param name="bottom">下辺 Y値</param>
+	/// <returns>正射影行列</returns>
+	static MyBase::Matrix3x3 MakeOrthographicMatrix(float left, float top, float right, float bottom);
+
+	/// <summary>
+	/// 3x3ビューポート行列の作成
+	/// </summary>
+	/// <param name="left">左辺 X値</param>
+	/// <param name="top">上辺 Y値</param>
+	/// <param name="width">横幅</param>
+	/// <param name="height">縦幅</param>
+	/// <returns>ビューポート変換行列</returns>
+	static MyBase::Matrix3x3 MakeViewportMatrix(float left, float top, float width, float height);
+
+	/// <summary>
+	/// 3x3行列の加算を返す関数
+	/// </summary>
+	/// <param name="matrix1">行列A</param>
+	/// <param name="matrix2">行列B</param>
+	/// <returns>加算結果の行列</returns>
+	static MyBase::Matrix3x3 Add(const MyBase::Matrix3x3& matrix1, const MyBase::Matrix3x3& matrix2);
+
+	/// <summary>
+	/// 3x3行列の減算を返す関数
+	/// </summary>
+	/// <param name="matrix1">行列A</param>
+	/// <param name="matrix2">行列B</param>
+	/// <returns>減算結果の行列</returns>
+	static MyBase::Matrix3x3 Subtract(const MyBase::Matrix3x3& matrix1, const MyBase::Matrix3x3& matrix2);
+
+	/// <summary>
+	/// 3x3行列の積を返す関数
+	/// </summary>
+	/// <param name="matrix1">行列A</param>
+	/// <param name="matrix2">行列B</param>
+	/// <returns>積の行列</returns>
+	static MyBase::Matrix3x3 Multiply(const MyBase::Matrix3x3& matrix1, const MyBase::Matrix3x3& matrix2);
+
+	/// <summary>
+	/// スカラーと3x3行列の積を返す関数
+	/// </summary>
+	/// <param name="scalar">スカラー値</param>
+	/// <param name="matrix">行列</param>
+	/// <returns>積の行列</returns>
+	static MyBase::Matrix3x3 Multiply(float scalar, const MyBase::Matrix3x3& matrix);
+
+	/// <summary>
+	/// 2次元ベクトルを同次座標として変換する関数
+	/// </summary>
+	/// <param name="vector">ベクトル</param>
+	/// <param name="matrix">行列</param>
+	/// <returns>変換後のベクトル</returns>
+	static MyBase::Vector2 Transform(const MyBase::Vector2& vector, const MyBase::Matrix3x3& matrix);
+
+	/// <summary>
+	/// 3x3逆行列の取得する関数
+	/// </summary>
+	/// <param name="matrix">行列</param>
+	/// <returns>逆行列</returns>
+	static MyBase::Matrix3x3 Inverse(const MyBase::Matrix3x3& matrix);
+
+	/// <summary>
+	/// 3x3転置行列の取得する関数
+	/// </summary>
+	/// <param name="matrix">行列</param>
+	/// <returns>転置行列</returns>
+	static MyBase::Matrix3x3 Transpose(const MyBase::Matrix3x3& matrix);
+
+#pragma endregion 3x3の行列
+
+#pragma region 4x4の行列
+	
+	/// <summary>
+	/// 4x4拡縮行列の作成
+	/// </summary>
+	/// <param name="scale">拡縮の値</param>
+	/// <returns>拡縮行列</returns>
+	static MyBase::Matrix4x4 MakeScaleMatrix(const MyBase::Vector3& scale);
+
+	/// <summary>
+	/// X軸回転行列の作成
+	/// </summary>
+	/// <param name="radian">角度(radian)</param>
+	/// <returns>X軸回転行列</returns>
+	static MyBase::Matrix4x4 MakeRotateXMatrix4x4(float radian);
+
+	/// <summary>
+	/// Y軸回転行列の作成
+	/// </summary>
+	/// <param name="radian">角度(radian)</param>
+	/// <returns>Y軸回転行列</returns>
+	static MyBase::Matrix4x4 MakeRotateYMatrix4x4(float radian);
+
+	/// <summary>
+	/// Z軸回転行列の作成
+	/// </summary>
+	/// <param name="radian">角度(radian)</param>
+	/// <returns>Z軸回転行列</returns>
+	static MyBase::Matrix4x4 MakeRotateZMatrix4x4(float radian);
+
+	/// <summary>
+	/// 4x4回転行列の作成
+	/// </summary>
+	/// <param name="radianX">X軸周りのθ値(radian)</param>
+	/// <param name="radianY">Y軸周りのθ値(radian)</param>
+	/// <param name="radianZ">Z軸周りのθ値(radian)</param>
+	/// <returns>回転行列</returns>
+	static MyBase::Matrix4x4 MakeRotateMatrix4x4(float radianX, float radianY, float radianZ);
+
+	/// <summary>
+	/// 4x4平行移動行列の作成
+	/// </summary>
+	/// <param name="translate">移動値</param>
+	/// <returns>平行移動行列</returns>
+	static MyBase::Matrix4x4 MakeTranslateMatrix(const MyBase::Vector3& translate);
+
+	/// <summary>
+	/// 3次元アフィン変換行列の作成
+	/// </summary>
+	/// <param name="scale">拡縮のベクトル</param>
+	/// <param name="rotate">角度ベクトル</param>
+	/// <param name="translate">移動のベクトル</param>
+	/// <returns>アフィン変換行列</returns>
+	static MyBase::Matrix4x4 MakeAffineMatrix(const MyBase::Vector3& scale, const MyBase::Vector3& rotate, const MyBase::Vector3& translate);
+
+	/// <summary>
+	/// 4x4透視投影行列の作成
+	/// </summary>
+	/// <param name="fovY">縦画角</param>
+	/// <param name="asoectRatio">アスペクト比</param>
+	/// <param name="nearClip">近平面への距離</param>
+	/// <param name="farClip">遠平面への距離</param>
+	/// <returns>透視投影行列</returns>
+	static MyBase::Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip);
+
+	/// <summary>
+	/// 4x4正射影行列の作成
+	/// </summary>
+	/// <param name="left">左辺 X値</param>
+	/// <param name="top">上辺 Y値</param>
+	/// <param name="right">右辺 X値</param>
+	/// <param name="bottom">下辺 Y値</param>
+	/// <param name="nearClip">近平面への距離</param>
+	/// <param name="farClip">遠平面への距離</param>
+	/// <returns>正射影行列</returns>
+	static MyBase::Matrix4x4 MakeOrthographicMatrix(float left, float top, float right, float bottom, float nearClip, float farClip);
+
+	/// <summary>
+	/// 4x4ビューポート変換行列の作成
+	/// </summary>
+	/// <param name="left">左辺 X値</param>
+	/// <param name="top">上辺 Y値</param>
+	/// <param name="width">横幅</param>
+	/// <param name="height">縦幅</param>
+	/// <param name="minDepth">最小深度値</param>
+	/// <param name="maxDepth">最大深度値</param>
+	/// <returns>ビューポート変換行列</returns>
+	static MyBase::Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, float minDepth, float maxDepth);
+
+	/// <summary>
+	/// 4x4単位行列の作成
+	/// </summary>
+	/// <returns>単位行列</returns>
+	static MyBase::Matrix4x4 MakeIdentity4x4();
+
+	/// <summary>
+	/// 4x4行列の加算を返す関数
+	/// </summary>
+	/// <param name="matrix1">行列A</param>
+	/// <param name="matrix2">行列B</param>
+	/// <returns>加算結果の行列</returns>
+	static MyBase::Matrix4x4 Add(const MyBase::Matrix4x4& matrix1, const MyBase::Matrix4x4& matrix2);
+
+	/// <summary>
+	/// 4x4行列の減算を返す関数
+	/// </summary>
+	/// <param name="matrix1">行列A</param>
+	/// <param name="matrix2">行列B</param>
+	/// <returns>減算結果の行列</returns>
+	static MyBase::Matrix4x4 Subtract(const MyBase::Matrix4x4& matrix1, const MyBase::Matrix4x4& matrix2);
+
+	/// <summary>
+	/// 4x4行列の積を返す関数
+	/// </summary>
+	/// <param name="matrix1">行列A</param>
+	/// <param name="matrix2">行列B</param>
+	/// <returns>積の行列</returns>
+	static MyBase::Matrix4x4 Multiply(const MyBase::Matrix4x4& matrix1, const MyBase::Matrix4x4& matrix2);
+
+	/// <summary>
+	/// スカラーと4x4行列の積を返す関数
+	/// </summary>
+	/// <param name="scalar">スカラー値</param>
+	/// <param name="matrix">行列</param>
+	/// <returns>積の行列</returns>
+	static MyBase::Matrix4x4 Multiply(float scalar, const MyBase::Matrix4x4& matrix);
+
+	/// <summary>
+	/// 3次元ベクトルを同次座標として変換する
+	/// </summary>
+	/// <param name="vector">ベクトル</param>
+	/// <param name="matrix">行列</param>
+	/// <returns>変換後のベクトル</returns>
+	static MyBase::Vector3 Transform(const MyBase::Vector3& vector, const MyBase::Matrix4x4& matrix);
+
+	/// <summary>
+	/// 4x4行列をスケールと回転の3次元ベクトルに変換して取得
+	/// </summary>
+	/// <param name="vector">ベクトル</param>
+	/// <param name="matrix">行列</param>
+	/// <returns>変換後のベクトル</returns>
+	static MyBase::Vector3 TransformNormal(const MyBase::Vector3& vector, const MyBase::Matrix4x4& matrix);
+
+	/// <summary>
+	/// 4x4逆行列の作成
+	/// </summary>
+	/// <param name="matrix">行列</param>
+	/// <returns>逆行列</returns>
+	static MyBase::Matrix4x4 Inverse(const MyBase::Matrix4x4& matrix);
+
+	/// <summary>
+	/// 4x4行列式の作成
+	/// </summary>
+	/// <param name="matrix">行列</param>
+	/// <returns>行列式</returns>
+	static float Determinant(const MyBase::Matrix4x4& matrix);
+
+	/// <summary>
+	/// 4x4転置行列の作成
+	/// </summary>
+	/// <param name="matrix">行列</param>
+	/// <returns>転置行列</returns>
+	static MyBase::Matrix4x4 Transpose(const MyBase::Matrix4x4& matrix);
+
+	/// <summary>
+	/// 4x4行列の平行移動成分をリセットする関数
+	/// </summary>
+	/// <param name="matrix">行列</param>
+	/// <returns>平行移動成分をリセットした4x4行列</returns>
+	static MyBase::Matrix4x4 ResetTranslation(const MyBase::Matrix4x4& matrix);
+#pragma endregion 4x4の行列
+};

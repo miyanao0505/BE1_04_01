@@ -1,0 +1,226 @@
+#include "Sprite.h"
+#include "SpriteBase.h"
+#include "Matrix.h"
+#include "TextureManager.h"
+#include <imgui.h>
+
+// 定数の定義と初期化
+#ifdef _DEBUG
+const float Sprite::kImGuiDragSpeed = 0.1f;
+const float Sprite::kImGuiTranslateLimit = 100.0f;
+const MyBase::ScopeF Sprite::kImGuiScaleScope = { 0.01f, 10.0f };
+#endif // _DEBUG
+
+// 初期化
+void Sprite::Initialize(const std::string& textureFilePath)
+{
+	// 引数を受け取ってメンバ変数に記録する
+	spriteBase_ = TextureManager::GetInstance()->GetSpriteBase();
+	filePath_ = textureFilePath;
+
+	// 使用するテクスチャを読み込む
+	TextureManager::GetInstance()->LoadTexture(filePath_);
+
+	// 頂点データの作成
+	CreateVertexData();
+
+	// マテリアルデータの作成
+	CreateMaterialData();
+
+	// 座標変換行列データの作成
+	CreateTransformationMatrixData();
+
+	// テクスチャのサイズセット
+	AdjustTextureSize();
+}
+
+// 更新処理
+void Sprite::Update()
+{
+	// アンカーポイントの反映処理
+	float left = kUVScope.min - anchorPoint_.x;
+	float right = kUVScope.max - anchorPoint_.x;
+	float top = kUVScope.min - anchorPoint_.y;
+	float bottom = kUVScope.max - anchorPoint_.y;
+
+	// フリップの反映処理
+	// 左右反転
+	if (isFlipX_) {
+		left = -left;
+		right = -right;
+	}
+	// 上下反転
+	if (isFlipY_) {
+		top = -top;
+		bottom = -bottom;
+	}
+
+	// テクスチャ範囲指定の反映処理
+	const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetaData(filePath_);
+	float tex_left = textureLeftTop_.x / metadata.width;
+	float tex_right = (textureLeftTop_.x + textureSize_.x) / metadata.width;
+	float tex_top = textureLeftTop_.y / metadata.height;
+	float tex_bottom = (textureLeftTop_.y + textureSize_.y) / metadata.height;
+
+	// 頂点リソースにデータを書き込む(4点分)
+	// 左下
+	vertexData_[0].position = { left, bottom, 0.0f, 1.0f };
+	vertexData_[0].texcoord = { tex_left, tex_bottom };
+	vertexData_[0].normal = kSpriteNormal;
+	// 左上
+	vertexData_[1].position = { left, top, 0.0f, 1.0f };
+	vertexData_[1].texcoord = { tex_left, tex_top };
+	vertexData_[1].normal = kSpriteNormal;
+	// 右下
+	vertexData_[2].position = { right, bottom, 0.0f, 1.0f };
+	vertexData_[2].texcoord = { tex_right, tex_bottom };
+	vertexData_[2].normal = kSpriteNormal;
+	// 右上
+	vertexData_[3].position = { right, top, 0.0f, 1.0f };
+	vertexData_[3].texcoord = { tex_right, tex_top };
+	vertexData_[3].normal = kSpriteNormal;
+	// インデックスリソースにデータを書き込む(6個分)
+	indexData_[0] = 0;		indexData_[1] = 1;		indexData_[2] = 2;
+	indexData_[3] = 1;		indexData_[4] = 3;		indexData_[5] = 2;
+
+	// Transform情報を作る
+	MyBase::Transform transform = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
+	transform.translate = { position_.x, position_.y, 0.0f };
+	transform.rotate = { 0.0f, 0.0f, rotation_ };
+	transform.scale = { size_.x, size_.y, 1.0f };
+	// TransformからWorldMatrixを作る
+	MyBase::Matrix4x4 worldMatrix = Matrix::MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
+	// SpriteBase で共有管理されている View／Projection 行列を使用して VP 行列を作成
+	MyBase::Matrix4x4 vp = Matrix::Multiply(SpriteBase::sViewMatrix, SpriteBase::sProjectionMatrix);
+	// 最終的な WVP をCBufferへ書き込む
+	transformationMatrixData_->WVP = Matrix::Multiply(worldMatrix, vp);
+	transformationMatrixData_->World = worldMatrix;
+}
+
+// 描画処理
+void Sprite::Draw()
+{
+	// VertexBufferViewを設定
+	spriteBase_->GetDxBase()->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferView_);
+	// IndexBufferViewを設定
+	spriteBase_->GetDxBase()->GetCommandList()->IASetIndexBuffer(&indexBufferView_);
+
+	// マテリアルCBufferの場所を設定
+	spriteBase_->GetDxBase()->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResource_.Get()->GetGPUVirtualAddress());
+	// 座標変換行列CBufferの場所を設定
+	spriteBase_->GetDxBase()->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResource_.Get()->GetGPUVirtualAddress());
+
+	// SRVのDescriptorTableの先頭を設定
+	spriteBase_->GetDxBase()->GetCommandList()->SetGraphicsRootDescriptorTable(2, TextureManager::GetInstance()->GetSrvHandleGPU(filePath_));
+	// 描画！(DrawCall/ドローコール)
+	spriteBase_->GetDxBase()->GetCommandList()->DrawIndexedInstanced(6, 1, 0, 0, 0);
+}
+
+#ifdef _DEBUG
+// デバック描画
+void Sprite::DebugDraw() {
+	ImGui::PushID(this);
+	if (ImGui::CollapsingHeader(filePath_.c_str()))
+	{
+		if (ImGui::TreeNode("Transform"))
+		{
+			// 移動
+			ImGui::DragFloat2("Translate", &position_.x, kImGuiDragSpeed, -kImGuiTranslateLimit, kImGuiTranslateLimit);
+			// 回転
+			ImGui::DragFloat("Rotate", &rotation_, kImGuiDragSpeed, -DirectX::XM_PI, DirectX::XM_PI);
+			// 拡縮
+			ImGui::DragFloat3("Scale", &size_.x, kImGuiDragSpeed, kImGuiScaleScope.min, kImGuiScaleScope.max);
+
+			ImGui::TreePop();
+		}
+	}
+	ImGui::PopID();
+}
+#endif // _DEBUG
+
+// テクスチャのセット
+void Sprite::SetTexture(const std::string& textureFilePath)
+{
+	// ファイルパスのセット
+	filePath_ = textureFilePath;
+
+	// テクスチャ変更に合わせてサイズも再度セット
+	AdjustTextureSize();
+}
+
+// 頂点データ作成
+void Sprite::CreateVertexData()
+{
+	// VertexResourceを作る
+	vertexResource_ = spriteBase_->GetDxBase()->CreateBufferResource(sizeof(MyBase::SpriteVertexData) * kVertexCount);
+	// IndexResourceを作る
+	indexResource_ = spriteBase_->GetDxBase()->CreateBufferResource(sizeof(uint32_t) * kIndexCount);
+	
+	// VertexBufferViewを作成する(値を設定するだけ)
+	// リソースの先頭のアドレスから使う
+	vertexBufferView_.BufferLocation = vertexResource_.Get()->GetGPUVirtualAddress();
+	// 使用するリソースのサイズは頂点6つ分のサイズ
+	vertexBufferView_.SizeInBytes = sizeof(MyBase::SpriteVertexData) * kVertexCount;
+	// 1頂点あたりのサイズ
+	vertexBufferView_.StrideInBytes = sizeof(MyBase::SpriteVertexData);
+	
+	// IndexBufferViewを作成する(値を設定するだけ)
+	// リソースの先頭のアドレスから使う
+	indexBufferView_.BufferLocation = indexResource_.Get()->GetGPUVirtualAddress();
+	// 使用するリソースのサイズはインデックス6つ分のサイズ
+	indexBufferView_.SizeInBytes = sizeof(uint32_t) * kIndexCount;
+	// インデックスはuint32_tとする
+	indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
+
+	// Vertex/Index バッファを永続マップする
+	// DirectX12 では頻繁に更新するリソースは、最初に Map しておき Unmap しない
+	// VertexResourceにデータを書き込むためのアドレスを取得してvertexDataに割り当てる
+	vertexResource_.Get()->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_));
+	// IndexResourceにデータを書き込むためのアドレスを取得してindexDataに割り当てる
+	indexResource_.Get()->Map(0, nullptr, reinterpret_cast<void**>(&indexData_));
+}
+
+// マテリアルデータ作成
+void Sprite::CreateMaterialData()
+{
+	// マテリアルリソースを作る
+	materialResource_ = spriteBase_->GetDxBase()->CreateBufferResource(sizeof(MyBase::SpriteMaterial));
+
+	// マテリアル バッファを永続マップする
+	// DirectX12 では頻繁に更新するリソースは、最初に Map しておき Unmap しない
+	// マテリアルリソースにデータを書き込むためのアドレスを取得してmaterialDataに割り当てる
+	materialResource_.Get()->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+
+	// マテリアルデータの初期値を書き込む
+	materialData_->color = MyBase::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+	materialData_->enableLighting = false;
+}
+
+// 座標変換行列データ作成
+void Sprite::CreateTransformationMatrixData()
+{
+	// 座標変換行列リソースを作る
+	transformationMatrixResource_ = spriteBase_->GetDxBase()->CreateBufferResource(sizeof(MyBase::TransformationMatrix));
+
+	// 座標変換行列 バッファを永続マップする
+	// DirectX12 では頻繁に更新するリソースは、最初に Map しておき Unmap しない
+	// 座標変換行列リソースにデータを書き込むためのアドレスを取得してtransformationMatrixDataに割り当てる
+	transformationMatrixResource_.Get()->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixData_));
+
+	// 単位行列を書き込んでおく
+	transformationMatrixData_->WVP = Matrix::MakeIdentity4x4();
+	transformationMatrixData_->World = Matrix::MakeIdentity4x4();
+}
+
+// テクスチャサイズをイメージに合わせる
+void Sprite::AdjustTextureSize()
+{
+	// テクスチャメタデータを取得
+	const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetaData(filePath_);
+
+	textureSize_.x = static_cast<float>(metadata.width);
+	textureSize_.y = static_cast<float>(metadata.height);
+	// 画像サイズをテクスチャサイズに合わせる
+	size_ = textureSize_;
+	spriteSize_ = size_;
+}

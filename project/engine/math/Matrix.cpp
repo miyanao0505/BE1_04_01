@@ -1,0 +1,692 @@
+#include "Matrix.h"
+
+///
+/// 2x2行列関数 ここから
+/// 
+
+/// 2x2回転行列の作成関数
+MyBase::Matrix2x2 Matrix::MakeRotateMatrix2x2(float theta)
+{
+	MyBase::Matrix2x2 ans = { 0 };
+
+	ans.m[0][0] = std::cos(theta);
+	ans.m[0][1] = std::sin(theta);
+	ans.m[1][0] = -std::sin(theta);
+	ans.m[1][1] = std::cos(theta);
+
+	return ans;
+}
+
+/// 2x2行列の加算を返す関数
+MyBase::Matrix2x2 Matrix::Add(const MyBase::Matrix2x2& matrix1, const MyBase::Matrix2x2& matrix2)
+{
+	MyBase::Matrix2x2 ans = { 0 };
+
+	for (int i = 0; i < 2; i++) {
+		for (int k = 0; k < 2; k++)	{
+			ans.m[i][k] = matrix1.m[i][k] + matrix2.m[i][k];
+		}
+	}
+
+	return ans;
+}
+
+/// 2x2行列の減算を返す関数
+MyBase::Matrix2x2 Matrix::Subtract(const MyBase::Matrix2x2& matrix1, const MyBase::Matrix2x2& matrix2)
+{
+	MyBase::Matrix2x2 ans = { 0 };
+
+	for (int i = 0; i < 2; i++)	{
+		for (int k = 0; k < 2; k++)	{
+			ans.m[i][k] = matrix1.m[i][k] - matrix2.m[i][k];
+		}
+	}
+
+	return ans;
+}
+
+/// 2x2行列の積を返す関数
+MyBase::Matrix2x2 Matrix::Multiply(const MyBase::Matrix2x2& matrix1, const MyBase::Matrix2x2& matrix2)
+{
+	MyBase::Matrix2x2 ans = { 0 };
+
+	for (int i = 0; i < 2; i++) {
+		for (int j = 0; j < 2; j++) {
+			for (int k = 0; k < 2; k++) {
+				ans.m[i][j] += matrix1.m[i][k] * matrix2.m[k][j];
+			}
+		}
+	}
+
+	return ans;
+}
+
+/// スカラーと2x2行列の積を返す関数
+MyBase::Matrix2x2 Matrix::Multiply(float scalar, const MyBase::Matrix2x2& matrix)
+{
+	MyBase::Matrix2x2 ans = { 0 };
+
+	for (int i = 0; i < 2; i++)	{
+		for (int k = 0; k < 2; k++)	{
+			ans.m[i][k] = scalar * matrix.m[i][k];
+		}
+	}
+
+	return ans;
+}
+
+/// 2次元ベクトルと2x2行列の積を返す関数
+MyBase::Vector2 Matrix::Multiply(const MyBase::Vector2& vector, const MyBase::Matrix2x2& matrix)
+{
+	MyBase::Vector2 ans;
+
+	ans.x = vector.x * matrix.m[0][0] + vector.y * matrix.m[1][0];
+	ans.y = vector.x * matrix.m[0][1] + vector.y * matrix.m[1][1];
+
+	return ans;
+}
+
+/// 2x2逆行列を取得する関数
+MyBase::Matrix2x2 Matrix::Inverse(const MyBase::Matrix2x2& matrix)
+{
+	MyBase::Matrix2x2 ans = { 0 };
+
+	if (matrix.m[0][0] * matrix.m[1][1] - matrix.m[0][1] * matrix.m[1][0] == 0) {
+		ans = matrix;
+	} else {
+		float scalar = 1 / (matrix.m[0][0] * matrix.m[1][1] - matrix.m[0][1] * matrix.m[1][0]);
+
+		ans.m[0][0] = matrix.m[1][1];
+		ans.m[0][1] = matrix.m[0][1] * -1.f;
+		ans.m[1][0] = matrix.m[1][0] * -1.f;
+		ans.m[1][1] = matrix.m[0][0];
+
+		ans = Multiply(scalar, ans);
+	}
+
+	return ans;
+}
+
+/// 2x2転置行列を取得する関数
+MyBase::Matrix2x2 Matrix::Transpose(const MyBase::Matrix2x2& matrix)
+{
+	MyBase::Matrix2x2 ans = { 0 };
+
+	for (int i = 0; i < 2; i++) {
+		for (int k = 0; k < 2; k++)	{
+			ans.m[k][i] = matrix.m[i][k];
+		}
+	}
+
+	return ans;
+}
+
+///
+/// 2x2行列関数 ここまで
+/// 
+
+/// 
+/// 3x3行列関数 ここから
+/// 
+
+/// 3x3拡縮行列の作成
+MyBase::Matrix3x3 Matrix::MakeScaleMatrix(const MyBase::Vector2& scale)
+{
+	MyBase::Matrix3x3 ans = { 0 };
+
+	ans.m[0][0] = scale.x;
+	ans.m[1][1] = scale.y;
+	ans.m[2][2] = 1;
+
+	return ans;
+}
+
+/// 3x3回転行列の作成
+MyBase::Matrix3x3 Matrix::MakeRotateMatrix3x3(float theta)
+{
+	MyBase::Matrix3x3 ans = { 0 };
+
+	ans.m[0][0] = std::cos(theta);
+	ans.m[0][1] = std::sin(theta);
+	ans.m[1][0] = std::sin(theta) * -1.f;
+	ans.m[1][1] = std::cos(theta);
+	ans.m[2][2] = 1;
+
+	return ans;
+}
+
+/// 3x3平行移動行列の作成関数
+MyBase::Matrix3x3 Matrix::MakeTranslateMatrix(const MyBase::Vector2& translate)
+{
+	MyBase::Matrix3x3 ans = { 0 };
+
+	ans.m[0][0] = 1;
+	ans.m[1][1] = 1;
+	ans.m[2][2] = 1;
+
+	ans.m[2][0] = translate.x;
+	ans.m[2][1] = translate.y;
+
+	return ans;
+}
+
+/// 2次元アフィン変換行列の作成
+MyBase::Matrix3x3 Matrix::MakeAffineMatrix(const MyBase::Vector2& scale, float rotate, const MyBase::Vector2& translate)
+{
+	MyBase::Matrix3x3 scaleMatrix = { 0 };
+	MyBase::Matrix3x3 rotateMatrix = { 0 };
+	MyBase::Matrix3x3 translateMatrix = { 0 };
+	MyBase::Matrix3x3 worldMatrix = { 0 };
+
+	// 拡縮行列を作成
+	scaleMatrix = MakeScaleMatrix(scale);
+
+	// 回転行列を作成
+	rotateMatrix = MakeRotateMatrix3x3(rotate);
+
+	// 平行移動行列を作成
+	translateMatrix = MakeTranslateMatrix(translate);
+
+	// 結合
+	worldMatrix = Multiply(scaleMatrix, rotateMatrix);
+	worldMatrix = Multiply(worldMatrix, translateMatrix);
+
+	return worldMatrix;
+}
+
+/// 3x3正射影行列の作成
+MyBase::Matrix3x3 Matrix::MakeOrthographicMatrix(float left, float top, float right, float bottom)
+{
+	MyBase::Matrix3x3 ans = { 0 };
+
+	ans.m[0][0] = 2.f / (right - left);
+	ans.m[1][1] = 2.f / (top - bottom);
+	ans.m[2][0] = (left + right) / (left - right);
+	ans.m[2][1] = (top + bottom) / (bottom - top);
+	ans.m[2][2] = 1.f;
+
+	return ans;
+}
+
+/// 3x3ビューポート行列の作成
+MyBase::Matrix3x3 Matrix::MakeViewportMatrix(float left, float top, float width, float height)
+{
+	MyBase::Matrix3x3 ans = { 0 };
+
+	ans.m[0][0] = width / 2.f;
+	ans.m[1][1] = height / 2.f * -1.f;
+	ans.m[2][0] = left + width / 2.f;
+	ans.m[2][1] = top + height / 2.f;
+	ans.m[2][2] = 1.f;
+
+	return ans;
+}
+
+/// 3x3行列の加算を返す関数
+MyBase::Matrix3x3 Matrix::Add(const MyBase::Matrix3x3& matrix1, const MyBase::Matrix3x3& matrix2)
+{
+	MyBase::Matrix3x3 ans = { 0 };
+
+	for (int i = 0; i < 3; i++)	{
+		for (int k = 0; k < 3; k++)	{
+			ans.m[i][k] = matrix1.m[i][k] + matrix2.m[i][k];
+		}
+	}
+
+	return ans;
+}
+
+/// 3x3行列の減算を返す関数
+MyBase::Matrix3x3 Matrix::Subtract(const MyBase::Matrix3x3& matrix1, const MyBase::Matrix3x3& matrix2)
+{
+	MyBase::Matrix3x3 ans = { 0 };
+
+	for (int i = 0; i < 3; i++)	{
+		for (int k = 0; k < 3; k++)	{
+			ans.m[i][k] = matrix1.m[i][k] - matrix2.m[i][k];
+		}
+	}
+
+	return ans;
+}
+
+/// 3x3行列の積を返す関数
+MyBase::Matrix3x3 Matrix::Multiply(const MyBase::Matrix3x3& matrix1, const MyBase::Matrix3x3& matrix2)
+{
+	MyBase::Matrix3x3 ans = { 0 };
+
+	for (int i = 0; i < 3; i++)	{
+		for (int j = 0; j < 3; j++)	{
+			for (int k = 0; k < 3; k++)	{
+				ans.m[i][j] += matrix1.m[i][k] * matrix2.m[k][j];
+			}
+		}
+	}
+
+	return ans;
+}
+
+/// スカラーと3x3行列の積を返す関数
+MyBase::Matrix3x3 Matrix::Multiply(float scalar, const MyBase::Matrix3x3& matrix)
+{
+	MyBase::Matrix3x3 ans;
+
+	for (int i = 0; i < 3; i++)	{
+		for (int k = 0; k < 3; k++)	{
+			ans.m[i][k] = scalar * matrix.m[i][k];
+		}
+	}
+
+	return ans;
+}
+
+/// 2次元ベクトルを同次座標として変換する関数
+MyBase::Vector2 Matrix::Transform(const MyBase::Vector2& vector, const MyBase::Matrix3x3& matrix)
+{
+	MyBase::Vector2 result;
+
+	result.x = vector.x * matrix.m[0][0] + vector.y * matrix.m[1][0] + 1.f * matrix.m[2][0];
+	result.y = vector.x * matrix.m[0][1] + vector.y * matrix.m[1][1] + 1.f * matrix.m[2][1];
+	float w = vector.x * matrix.m[0][2] + vector.y * matrix.m[1][2] + 1.f * matrix.m[2][2];
+
+	assert(w != 0.0f);
+
+	result.x /= w;
+	result.y /= w;
+
+	return result;
+}
+
+/// 3x3逆行列の取得する関数
+MyBase::Matrix3x3 Matrix::Inverse(const MyBase::Matrix3x3& matrix)
+{
+	MyBase::Matrix3x3 ans;
+
+	if (matrix.m[0][0] * matrix.m[1][1] * matrix.m[2][2] + matrix.m[0][1] * matrix.m[1][2] * matrix.m[2][0] + matrix.m[0][2] * matrix.m[1][0] * matrix.m[2][1] - matrix.m[0][2] * matrix.m[1][1] * matrix.m[2][0] - matrix.m[0][1] * matrix.m[1][0] * matrix.m[2][2] - matrix.m[0][0] * matrix.m[1][2] * matrix.m[2][1] == 0) {
+		ans = matrix;
+	} else {
+		float scalar = 1 / (matrix.m[0][0] * matrix.m[1][1] * matrix.m[2][2] + matrix.m[0][1] * matrix.m[1][2] * matrix.m[2][0] + matrix.m[0][2] * matrix.m[1][0] * matrix.m[2][1] - matrix.m[0][2] * matrix.m[1][1] * matrix.m[2][0] - matrix.m[0][1] * matrix.m[1][0] * matrix.m[2][2] - matrix.m[0][0] * matrix.m[1][2] * matrix.m[2][1]);
+
+		ans.m[0][0] = matrix.m[1][1] * matrix.m[2][2] - matrix.m[1][2] * matrix.m[2][1];
+		ans.m[0][1] = -(matrix.m[0][1] * matrix.m[2][2] - matrix.m[0][2] * matrix.m[2][1]);
+		ans.m[0][2] = matrix.m[0][1] * matrix.m[1][2] - matrix.m[0][2] * matrix.m[1][1];
+
+		ans.m[1][0] = -(matrix.m[1][0] * matrix.m[2][2] - matrix.m[1][2] * matrix.m[2][0]);
+		ans.m[1][1] = matrix.m[0][0] * matrix.m[2][2] - matrix.m[0][2] * matrix.m[2][0];
+		ans.m[1][2] = -(matrix.m[0][0] * matrix.m[1][2] - matrix.m[0][2] * matrix.m[1][0]);
+		
+		ans.m[2][0] = matrix.m[1][0] * matrix.m[2][1] - matrix.m[1][1] * matrix.m[2][0];
+		ans.m[2][1] = -(matrix.m[0][0] * matrix.m[2][1] - matrix.m[0][1] * matrix.m[2][0]);
+		ans.m[2][2] = matrix.m[0][0] * matrix.m[1][1] - matrix.m[0][1] * matrix.m[1][0];
+
+		ans = Multiply(scalar, ans);
+	}
+
+	return ans;
+}
+
+/// 3x3転置行列の取得する関数
+MyBase::Matrix3x3 Matrix::Transpose(const MyBase::Matrix3x3& matrix)
+{
+	MyBase::Matrix3x3 ans;
+
+	for (int i = 0; i < 3; i++)	{
+		for (int k = 0; k < 3; k++)	{
+			ans.m[k][i] = matrix.m[i][k];
+		}
+	}
+
+	return ans;
+}
+
+///
+/// 3x3行列関数 ここまで
+/// 
+
+///
+/// 4x4行列関数 ここから
+/// 
+
+/// 4x4拡縮行列の作成
+MyBase::Matrix4x4 Matrix::MakeScaleMatrix(const MyBase::Vector3& scale)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	ans.m[0][0] = scale.x;
+	ans.m[1][1] = scale.y;
+	ans.m[2][2] = scale.z;
+	ans.m[3][3] = 1;
+
+	return ans;
+}
+
+/// X軸回転行列の作成
+MyBase::Matrix4x4 Matrix::MakeRotateXMatrix4x4(float radian)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	ans.m[0][0] = 1;
+	ans.m[1][1] = std::cos(radian);
+	ans.m[1][2] = std::sin(radian);
+	ans.m[2][1] = -std::sin(radian);
+	ans.m[2][2] = std::cos(radian);
+	ans.m[3][3] = 1;
+
+	return ans;
+}
+
+/// Y軸回転行列の作成
+MyBase::Matrix4x4 Matrix::MakeRotateYMatrix4x4(float radian)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	ans.m[0][0] = std::cos(radian);
+	ans.m[0][2] = -std::sin(radian);
+	ans.m[1][1] = 1;
+	ans.m[2][0] = std::sin(radian);
+	ans.m[2][2] = std::cos(radian);
+	ans.m[3][3] = 1;
+
+	return ans;
+}
+
+/// Z軸回転行列の作成
+MyBase::Matrix4x4 Matrix::MakeRotateZMatrix4x4(float radian)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	ans.m[0][0] = std::cos(radian);
+	ans.m[0][1] = std::sin(radian);
+	ans.m[1][0] = -std::sin(radian);
+	ans.m[1][1] = std::cos(radian);
+	ans.m[2][2] = 1;
+	ans.m[3][3] = 1;
+
+	return ans;
+}
+
+/// 4x4回転行列の作成
+MyBase::Matrix4x4 Matrix::MakeRotateMatrix4x4(float radianX, float radianY, float radianZ)
+{
+	MyBase::Matrix4x4 rotateX = MakeRotateXMatrix4x4(radianX);
+	MyBase::Matrix4x4 rotateY = MakeRotateYMatrix4x4(radianY);
+	MyBase::Matrix4x4 rotateZ = MakeRotateZMatrix4x4(radianZ);
+	MyBase::Matrix4x4 ans = { 0 };
+
+	ans = Multiply(rotateX, Multiply(rotateY, rotateZ));
+
+	return ans;
+}
+
+/// 4x4平行移動行列の作成
+MyBase::Matrix4x4 Matrix::MakeTranslateMatrix(const MyBase::Vector3& translate)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	ans.m[0][0] = 1;
+	ans.m[1][1] = 1;
+	ans.m[2][2] = 1;
+	ans.m[3][3] = 1;
+
+	ans.m[3][0] = translate.x;
+	ans.m[3][1] = translate.y;
+	ans.m[3][2] = translate.z;
+
+	return ans;
+}
+
+/// 3次元アフィン変換行列の作成
+MyBase::Matrix4x4 Matrix::MakeAffineMatrix(const MyBase::Vector3& scale, const MyBase::Vector3& rotate, const MyBase::Vector3& translate)
+{
+	MyBase::Matrix4x4 scaleMatrix = MakeScaleMatrix(scale);
+	MyBase::Matrix4x4 rotateMatrix = MakeRotateMatrix4x4(rotate.x, rotate.y, rotate.z);
+	MyBase::Matrix4x4 translateMatrix = MakeTranslateMatrix(translate);
+	MyBase::Matrix4x4 worldMatrix = { 0 };
+
+	worldMatrix = Multiply(scaleMatrix, rotateMatrix);
+	worldMatrix = Multiply(worldMatrix, translateMatrix);
+
+	return worldMatrix;
+}
+
+/// 4x4透視投影行列の作成
+MyBase::Matrix4x4 Matrix::MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	ans.m[0][0] = (1 / aspectRatio) * (1 / std::tan(fovY / 2));
+	ans.m[1][1] = (1 / std::tan(fovY / 2));
+	ans.m[2][2] = farClip / (farClip - nearClip);
+	ans.m[2][3] = 1;
+	ans.m[3][2] = (-nearClip * farClip) / (farClip - nearClip);
+
+	return ans;
+}
+
+/// 4x4正射影行列の作成
+MyBase::Matrix4x4 Matrix::MakeOrthographicMatrix(float left, float top, float right, float bottom, float nearClip, float farClip)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	ans.m[0][0] = 2 / (right - left);
+	ans.m[1][1] = 2 / (top - bottom);
+	ans.m[2][2] = 1 / (farClip - nearClip);
+	ans.m[3][0] = (left + right) / (left - right);
+	ans.m[3][1] = (top + bottom) / (bottom - top);
+	ans.m[3][2] = nearClip / (nearClip - farClip);
+	ans.m[3][3] = 1;
+
+	return ans;
+}
+	
+/// 4x4ビューポート変換行列の作成
+MyBase::Matrix4x4 Matrix::MakeViewportMatrix(float left, float top, float width, float height, float minDepth, float maxDepth)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	ans.m[0][0] = width / 2;
+	ans.m[1][1] = -height / 2;
+	ans.m[2][2] = maxDepth - minDepth;
+	ans.m[3][0] = left + width / 2;
+	ans.m[3][1] = top + height / 2;
+	ans.m[3][2] = minDepth;
+	ans.m[3][3] = 1;
+
+	return ans;
+}
+
+/// 4x4単位行列の作成
+MyBase::Matrix4x4 Matrix::MakeIdentity4x4()
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	ans.m[0][0] = 1;
+	ans.m[1][1] = 1;
+	ans.m[2][2] = 1;
+	ans.m[3][3] = 1;
+
+	return ans;
+}
+
+/// 4x4行列の加算を返す関数
+MyBase::Matrix4x4 Matrix::Add(const MyBase::Matrix4x4& matrix1, const MyBase::Matrix4x4& matrix2)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++)	{
+			ans.m[i][j] = matrix1.m[i][j] + matrix2.m[i][j];
+		}
+	}
+
+	return ans;
+}
+
+/// 4x4行列の減算を返す関数
+MyBase::Matrix4x4 Matrix::Subtract(const MyBase::Matrix4x4& matrix1, const MyBase::Matrix4x4& matrix2)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	for (int i = 0; i < 4; i++)	{
+		for (int j = 0; j < 4; j++)	{
+			ans.m[i][j] = matrix1.m[i][j] - matrix2.m[i][j];
+		}
+	}
+
+	return ans;
+}
+
+/// 4x4行列の積を返す関数
+MyBase::Matrix4x4 Matrix::Multiply(const MyBase::Matrix4x4& matrix1, const MyBase::Matrix4x4& matrix2)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			for (int k = 0; k < 4; k++) {
+				ans.m[i][j] += matrix1.m[i][k] * matrix2.m[k][j];
+			}
+		}
+	}
+
+	return ans;
+}
+
+/// スカラーと4x4行列の積を返す関数
+MyBase::Matrix4x4 Matrix::Multiply(float scalar, const MyBase::Matrix4x4& matrix)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	for (int i = 0; i < 4; i++)	{
+		for (int j = 0; j < 4; j++) {
+			ans.m[i][j] = scalar * matrix.m[i][j];
+		}
+	}
+
+	return ans;
+}
+
+/// 3次元ベクトルを同次座標として変換する
+MyBase::Vector3 Matrix::Transform(const MyBase::Vector3& vector, const MyBase::Matrix4x4& matrix)
+{
+	MyBase::Vector3 result;
+
+	result.x = vector.x * matrix.m[0][0] + vector.y * matrix.m[1][0] + vector.z * matrix.m[2][0] + 1.f * matrix.m[3][0];
+	result.y = vector.x * matrix.m[0][1] + vector.y * matrix.m[1][1] + vector.z * matrix.m[2][1] + 1.f * matrix.m[3][1];
+	result.z = vector.x * matrix.m[0][2] + vector.y * matrix.m[1][2] + vector.z * matrix.m[2][2] + 1.f * matrix.m[3][2];
+	float w = vector.x * matrix.m[0][3] + vector.y * matrix.m[1][3] + vector.z * matrix.m[2][3] + 1.f * matrix.m[3][3];
+
+	assert(w != 0.0f);
+
+	result.x /= w;
+	result.y /= w;
+	result.z /= w;
+
+	return result;
+}
+
+/// 4x4行列をスケールと回転の3次元ベクトルに変換して取得
+MyBase::Vector3 Matrix::TransformNormal(const MyBase::Vector3& vector, const MyBase::Matrix4x4& matrix)
+{
+	MyBase::Vector3 result;
+
+	result.x = vector.x * matrix.m[0][0] + vector.y * matrix.m[1][0] + vector.z * matrix.m[2][0];
+	result.y = vector.x * matrix.m[0][1] + vector.y * matrix.m[1][1] + vector.z * matrix.m[2][1];
+	result.z = vector.x * matrix.m[0][2] + vector.y * matrix.m[1][2] + vector.z * matrix.m[2][2];
+
+	return result;
+}
+
+/// 4x4逆行列の作成
+MyBase::Matrix4x4 Matrix::Inverse(const MyBase::Matrix4x4& matrix)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+	float determinant = Determinant(matrix);
+
+	assert(determinant != 0.0f);
+
+	if (determinant == 0) {
+		return matrix;
+	} 
+
+	float scalar = 1 / determinant;
+
+	// 余因子を計算するラムダ関数
+	auto Cofactor = [](const MyBase::Matrix4x4& mat, int row, int col) -> float {
+		float minor[3][3];
+		int m_row = 0, m_col = 0;
+		for (int i = 0; i < 4; i++) {
+			if (i == row) continue;
+			m_col = 0;
+			for (int j = 0; j < 4; j++) {
+				if (j == col) continue;
+				minor[m_row][m_col] = mat.m[i][j];
+				m_col++;
+			}
+			m_row++;
+		}
+		// 3x3行列式
+		return minor[0][0] * (minor[1][1] * minor[2][2] - minor[1][2] * minor[2][1])
+			- minor[0][1] * (minor[1][0] * minor[2][2] - minor[1][2] * minor[2][0])
+			+ minor[0][2] * (minor[1][0] * minor[2][1] - minor[1][1] * minor[2][0]);
+		};
+	
+	// 余因子行列の転置を計算
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			float sign = ((i + j) % 2 == 0) ? 1.0f : -1.0f;
+			ans.m[j][i] = sign * Cofactor(matrix, i, j);	// 転置しながら代入
+		}
+	}
+
+	return ans = Multiply(scalar, ans);
+}
+
+/// 4x4行列式の作成
+float Matrix::Determinant(const MyBase::Matrix4x4& matrix)
+{
+	float ans = 0;
+
+	ans = matrix.m[0][0] * matrix.m[1][1] * matrix.m[2][2] * matrix.m[3][3] + matrix.m[0][0] * matrix.m[1][2] * matrix.m[2][3] * matrix.m[3][1] + matrix.m[0][0] * matrix.m[1][3] * matrix.m[2][1] * matrix.m[3][2]
+		- matrix.m[0][0] * matrix.m[1][3] * matrix.m[2][2] * matrix.m[3][1] - matrix.m[0][0] * matrix.m[1][2] * matrix.m[2][1] * matrix.m[3][3] - matrix.m[0][0] * matrix.m[1][1] * matrix.m[2][3] * matrix.m[3][2]
+		- matrix.m[0][1] * matrix.m[1][0] * matrix.m[2][2] * matrix.m[3][3] - matrix.m[0][2] * matrix.m[1][0] * matrix.m[2][3] * matrix.m[3][1] - matrix.m[0][3] * matrix.m[1][0] * matrix.m[2][1] * matrix.m[3][2]
+		+ matrix.m[0][3] * matrix.m[1][0] * matrix.m[2][2] * matrix.m[3][1] + matrix.m[0][2] * matrix.m[1][0] * matrix.m[2][1] * matrix.m[3][3] + matrix.m[0][1] * matrix.m[1][0] * matrix.m[2][3] * matrix.m[3][2]
+		+ matrix.m[0][1] * matrix.m[1][2] * matrix.m[2][0] * matrix.m[3][3] + matrix.m[0][2] * matrix.m[1][3] * matrix.m[2][0] * matrix.m[3][1] + matrix.m[0][3] * matrix.m[1][1] * matrix.m[2][0] * matrix.m[3][2]
+		- matrix.m[0][3] * matrix.m[1][2] * matrix.m[2][0] * matrix.m[3][1] - matrix.m[0][2] * matrix.m[1][1] * matrix.m[2][0] * matrix.m[3][3] - matrix.m[0][1] * matrix.m[1][3] * matrix.m[2][0] * matrix.m[3][2]
+		- matrix.m[0][1] * matrix.m[1][2] * matrix.m[2][3] * matrix.m[3][0] - matrix.m[0][2] * matrix.m[1][3] * matrix.m[2][1] * matrix.m[3][0] - matrix.m[0][3] * matrix.m[1][1] * matrix.m[2][2] * matrix.m[3][0]
+		+ matrix.m[0][3] * matrix.m[1][2] * matrix.m[2][1] * matrix.m[3][0] + matrix.m[0][2] * matrix.m[1][1] * matrix.m[2][3] * matrix.m[3][0] + matrix.m[0][1] * matrix.m[1][3] * matrix.m[2][2] * matrix.m[3][0];
+
+	return ans;
+}
+
+/// 4x4転置行列の作成
+MyBase::Matrix4x4 Matrix::Transpose(const MyBase::Matrix4x4& matrix)
+{
+	MyBase::Matrix4x4 ans = { 0 };
+
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			ans.m[j][i] = matrix.m[i][j];
+		}
+	}
+
+	return ans;
+}
+
+/// 4x4行列の平行移動成分をリセットする関数
+MyBase::Matrix4x4 Matrix::ResetTranslation(const MyBase::Matrix4x4& matrix)
+{
+	MyBase::Matrix4x4 ans = matrix;
+
+	ans.m[3][0] = 0;
+	ans.m[3][1] = 0;
+	ans.m[3][2] = 0;
+
+	return ans;
+}
+
+/// 
+/// 4x4行列関数 ここまで
+/// 

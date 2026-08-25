@@ -1,0 +1,118 @@
+#include "SrvManager.h"
+#include <d3d12.h>
+
+#pragma comment(lib, "d3d12.lib")
+#pragma comment(lib, "dxgi.lib")
+
+const uint32_t SrvManager::kMaxSRVCount = 512;
+
+// 初期化
+void SrvManager::Initialize()
+{
+	// メンバ変数に記録
+	dxBase_ = DirectXBase::GetInstance();
+
+	// SRV用のデスクリプタヒープを生成
+	descriptorHeap_ = dxBase_->CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, kMaxSRVCount, true);
+	// SRV用のDescriptorSizeを取得して記録
+	descriptorSize_ = dxBase_->GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+}
+
+// Allocationの確保
+uint32_t SrvManager::Allocate()
+{
+	// 上限に達していないかチェックしてassert
+	assert(useIndex_ < kMaxSRVCount);
+
+	// return する番号を一旦記録しておく
+	uint32_t index = useIndex_;
+	// 次回のために番号を1進める
+	useIndex_++;
+	// 上で記録した番号をreturn
+	return index;
+}
+
+// SRVの指定番号のCPUデスクリプタハンドルを取得する
+D3D12_CPU_DESCRIPTOR_HANDLE SrvManager::GetCPUDescriptorHandle(uint32_t index)
+{
+	D3D12_CPU_DESCRIPTOR_HANDLE handleCPU = descriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+	handleCPU.ptr += (descriptorSize_ * index);
+	return handleCPU;
+}
+
+// SRVの指定番号のGPUデスクリプタハンドルを取得する
+D3D12_GPU_DESCRIPTOR_HANDLE SrvManager::GetGPUDescriptorHandle(uint32_t index)
+{
+	D3D12_GPU_DESCRIPTOR_HANDLE handleGPU = descriptorHeap_->GetGPUDescriptorHandleForHeapStart();
+	handleGPU.ptr += (descriptorSize_ * index);
+	return handleGPU;
+}
+
+// SRV生成(テクスチャ用)
+void SrvManager::CreateSRVForTexture2D(uint32_t srvIndex, DirectX::TexMetadata metaData, ID3D12Resource* pResource)
+{
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	// SRVの設定
+	srvDesc.Format = metaData.format;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = UINT(metaData.mipLevels);
+
+	// 設定をもとにSRVを生成
+	dxBase_->GetDevice()->CreateShaderResourceView(pResource, &srvDesc, GetCPUDescriptorHandle(srvIndex));
+}
+
+// SRV生成(Structured Buffer用)
+void SrvManager::CreateSRVForStructuredBuffer(uint32_t srvIndex, ID3D12Resource* pResource, UINT numElements, UINT structureByteStride)
+{
+	D3D12_SHADER_RESOURCE_VIEW_DESC instancingSrvDesc{};
+	// SRVの設定
+	instancingSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
+	instancingSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	instancingSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	instancingSrvDesc.Buffer.FirstElement = kFirstElementOffset;
+	instancingSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+	instancingSrvDesc.Buffer.NumElements = numElements;
+	instancingSrvDesc.Buffer.StructureByteStride = structureByteStride;
+	// 設定をもとにSRVを生成
+	dxBase_->GetDevice()->CreateShaderResourceView(pResource, &instancingSrvDesc, GetCPUDescriptorHandle(srvIndex));
+}
+
+// SRV生成(キューブマップ用)
+void SrvManager::CreateSRVForTextureCube(uint32_t srvIndex, DirectX::TexMetadata metaData, ID3D12Resource* pResource)
+{
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+	srvDesc.TextureCube.MostDetailedMip = 0;
+	srvDesc.TextureCube.MipLevels = static_cast<UINT>(metaData.mipLevels);
+	srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+	srvDesc.Format = metaData.format;
+
+	// 設定をもとにSRVを生成
+	dxBase_->GetDevice()->CreateShaderResourceView(pResource, &srvDesc, GetCPUDescriptorHandle(srvIndex));
+}
+
+// 描画前処理
+void SrvManager::PreDraw()
+{
+	// 描画用のDescriptorHeapの設定
+	ID3D12DescriptorHeap* descriptorHeaps[] = { descriptorHeap_.Get()};
+	dxBase_->GetCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+}
+
+// SRVセットコマンド
+void SrvManager::SetGraphicsRootDescriptorTable(UINT RootParameterIndex, uint32_t srvIndex)
+{
+	dxBase_->GetCommandList()->SetGraphicsRootDescriptorTable(RootParameterIndex, GetGPUDescriptorHandle(srvIndex));
+}
+
+// テクスチャ枚数上限チェック
+bool SrvManager::IsSecure()
+{
+	if (useIndex_ < SrvManager::kMaxSRVCount)
+	{
+		return true;
+	}
+	return false;
+}

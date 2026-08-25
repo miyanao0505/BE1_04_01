@@ -1,0 +1,162 @@
+#include "TitleScene.h"
+#include <imgui.h>
+#include "CameraManager.h"
+#include "LightManager.h"
+#include "ModelManager.h"
+#include "TextureManager.h"
+#include "ParticleManager.h"
+#include "SceneManager.h"
+#include "TimeManager.h"
+#include "MyBase.h"
+#include "MyTools.h"
+
+// 初期化
+void TitleScene::Initialize()
+{
+#pragma region シーン初期化
+	BaseScene::Initialize();
+
+#pragma region カメラ
+	CameraManager::GetInstance()->SetCamera("default");
+	CameraManager::GetInstance()->GetCamera()->SetTranslate(kCameraTranslate);
+	CameraManager::GetInstance()->GetCamera()->SetRotate(kCameraRotate);
+#pragma endregion カメラ
+
+#pragma region スプライト
+	// テクスチャの読み込み
+
+
+	// スプライト
+	
+
+#pragma endregion スプライト
+
+#pragma region 3Dオブジェクト
+	// .objファイルからモデルを読み込む
+
+	// 3Dオブジェクト
+
+#pragma endregion 3Dオブジェクト
+
+#pragma region パーティクル
+	// パーティクル
+	
+
+#pragma endregion パーティクル
+
+#pragma region オーディオ
+	// BGM
+
+	
+#pragma endregion オーディオ
+
+#pragma region 変数
+	
+#pragma endregion 変数
+
+	// 最初の更新
+	CameraManager::GetInstance()->GetCamera()->Update();
+
+#pragma endregion シーン初期化
+}
+
+// 終了
+void TitleScene::Finalize()
+{
+	BaseScene::Finalize();
+	
+	// 3Dオブジェクト
+	
+	// スプライト
+	fadeSprite_.reset();
+}
+
+// 毎フレーム更新
+void TitleScene::Update()
+{
+	BaseScene::Update();
+
+#ifdef _DEBUG
+	DebugDraw();
+#endif // _DEBUG
+
+	// ゲームシーンへの遷移
+	if (input_->TriggerKey(DIK_RETURN)) {
+		SceneManager::GetInstance()->ChangeScene(SceneName::Game);
+		return;
+	}
+
+	// 3Dオブジェクトの更新処理
+
+
+	// パーティクルの更新処理
+	ParticleManager::GetInstance()->Update();
+
+	// スプライトの更新処理
+	
+}
+
+// 描画
+void TitleScene::Draw()
+{
+#pragma region 3Dオブジェクト
+
+	// 3Dオブジェクトの描画準備。3Dオブジェクトの描画に共通のグラフィックスコマンドを積む
+	ModelManager::GetInstance()->SetCommonScreen();
+
+	// 全ての3DObject個々の描画
+
+#pragma endregion 3Dオブジェクト
+
+#pragma region パーティクル
+
+	// パーティクルの描画準備。パーティクルの描画に共通グラフィックスコマンドを積む
+
+#pragma endregion パーティクル
+
+#pragma region スプライト
+
+	// Spriteの描画準備。Spriteの描画に共通のグラフィックスコマンドを積む
+	TextureManager::GetInstance()->SetCommonScreen();
+
+	// 全てのSprite個々の描画
+	
+
+#pragma endregion スプライト
+}
+
+#ifdef _DEBUG
+// デバッグ描画
+void TitleScene::DebugDraw()
+{
+	// 開発用UIの処理。実際に開発用のUIを出す場合はここをゲーム固有の処理に置き換える
+	ImGui::SetNextWindowPos(ImVec2(900, 20), ImGuiCond_Once);		// ウィンドウの座標(プログラム起動時のみ読み込み)
+	ImGui::SetNextWindowSize(ImVec2(350, 150), ImGuiCond_Once);		// ウィンドウのサイズ(プログラム起動時のみ読み込み)
+
+	ImGui::Begin("Settings"); 
+	// Camera
+	CameraManager::GetInstance()->DebugDraw();
+
+	// Light
+	LightManager::GetInstance()->DebugDraw();
+
+	// 3Dオブジェクト
+
+	// スプライト
+	
+
+	ImGui::End();
+}
+#endif // _DEBUG
+
+// jsonファイルの読み込み
+void TitleScene::LoadJsonFile([[maybe_unused]] const std::string& filePath)
+{
+	// レベルデータの読み込み
+	std::unique_ptr<JsonLevelData> levelData = jsonLoader_->LoadFile(filePath);
+
+	// 3Dオブジェクトの読み込み
+	for (const JsonObjectData& objectData : levelData->objects) {
+		objectData;
+	}
+}

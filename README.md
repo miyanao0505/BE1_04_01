@@ -1,0 +1,2 @@
+[![DebugBuild](https://github.com/miyanao0505/MyEngine/actions/workflows/DebugBuild.yml/badge.svg)](https://github.com/miyanao0505/MyEngine/actions/workflows/DebugBuild.yml)
+[![ReleaseBuild](https://github.com/miyanao0505/MyEngine/actions/workflows/ReleaseBuild.yml/badge.svg)](https://github.com/miyanao0505/MyEngine/actions/workflows/ReleaseBuild.yml)
