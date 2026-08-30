@@ -4,10 +4,14 @@
 #include <vector>
 #include "Sprite.h"
 #include "ParticleEmitter.h"
+#include "LogicName.h"
 #include "MyBase.h"
 #ifdef _DEBUG
 #include <imgui.h>
 #endif // _DEBUG
+#include <future>
+
+using LogicType = LogicName;
 
 /// <summary>
 /// プレイヤーが実際に操作し、敵との戦闘や進行を行うゲーム本編のメインシーンを管理するクラス。
@@ -23,10 +27,10 @@ private:
 
 #ifdef _DEBUG
 	// ImGui
-	static constexpr ImVec2 kDebugWindowPosScene{ 20.0f, 350.0f };
-	static constexpr ImVec2 kDebugWindowSizeScene{ 350.0f, 150.0f };
-	static constexpr ImVec2 kDebugWindowPosSettings{ 900.0f, 20.0f };
-	static constexpr ImVec2 kDebugWindowSizeSettings{ 350.0f, 150.0f };
+	static constexpr ImVec2 kDebugWindowPosGame{ 20.0f, 350.0f };
+	static constexpr ImVec2 kDebugWindowSizeGame{ 350.0f, 150.0f };
+	static constexpr ImVec2 kDebugWindowPosRanking{ 900.0f, 20.0f };
+	static constexpr ImVec2 kDebugWindowSizeRanking{ 350.0f, 150.0f };
 #endif // _DEBUG
 #pragma endregion
 
@@ -69,6 +73,30 @@ public:	// メンバ関数
 	/// <param name="filePath">ファイルパス</param>
 	void LoadJsonFile([[maybe_unused]] const std::string& filePath) override;
 
+private:
+	/// <summary>
+	/// レスポンスを格納するためのコールバック関数
+	/// </summary>
+	/// <param name="c"></param>
+	/// <param name="s"></param>
+	/// <param name="n"></param>
+	/// <param name="o"></param>
+	/// <returns></returns>
+	static size_t WriteCallback(void* c, size_t s, size_t n, std::string* o);
+
+	/// <summary>
+	/// スコア送信
+	/// </summary>
+	/// <param name="score">スコア</param>
+	/// <returns></returns>
+	std::future<std::string> PostScoreAsync(int score);
+
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <returns></returns>
+	std::future<std::string> GetAllScoresAsync();
+
 private:	// メンバ変数
 #pragma region スプライト
 
@@ -77,6 +105,15 @@ private:	// メンバ変数
 #pragma region 3Dオブジェクト
 
 #pragma endregion
+
+	// ロジック
+	LogicType logicType_;
+
+	std::chrono::steady_clock::time_point start_, end_;
+	double sec_ = 0.0;
+	int score_ = 0;
+
+	std::string rankingText_;
 
 	// パーティクル
 

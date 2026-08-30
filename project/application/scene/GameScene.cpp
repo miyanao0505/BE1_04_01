@@ -11,7 +11,9 @@
 #ifdef _DEBUG
 #include "DebugLineBase.h"
 #endif // _DEBUG
+#include <curl/curl.h>
 
+using json = nlohmann::json;
 using namespace std;
 using namespace MyBase;
 
@@ -44,6 +46,11 @@ void GameScene::Initialize() {
 #endif // _DEBUG
 #pragma endregion
 
+#pragma region ロジック
+	logicType_ = LogicName::WAIT_START;
+#pragma endregion ロジック
+
+
 #pragma region パーティクル
 	// パーティクル
 	
@@ -61,6 +68,8 @@ void GameScene::Initialize() {
 	// お試し用
 	AudioManager::GetInstance()->LoadAudioWave("fanfare.wav");
 #pragma endregion オーディオ
+
+	rankingText_.clear();
 
 	// 最初の更新
 	CameraManager::GetInstance()->GetCamera()->SetTranslate(kCameraTranslate);
@@ -88,6 +97,8 @@ void GameScene::Finalize() {
 // 毎フレーム更新
 void GameScene::Update()
 {
+	curl_global_init(CURL_GLOBAL_DEFAULT);
+
 	BaseScene::Update();
 
 #ifdef _DEBUG
@@ -104,12 +115,82 @@ void GameScene::Update()
 
 	// 3Dオブジェクトの更新処理
 
+	// ロジックの更新処理
+	switch (logicType_) {
+		case LogicName::WAIT_START:
+			
+			if (input_->TriggerKey(DIK_SPACE)) {
+				logicType_ = LogicName::RUNNING;
+
+				sec_ = 0.0;
+				score_ = 0;
+				start_ = chrono::steady_clock::now();
+
+				break;
+			}
+
+			break;
+		case LogicName::RUNNING:
+			if (input_->TriggerKey(DIK_SPACE)) {
+				logicType_ = LogicName::RESULT;
+
+				double diff = abs(sec_ - 10.0);
+				score_ = (sec_ <= 10.0) ? max(0, 1000 - (int)(diff * 100)) : 0;
+
+				break;
+			}
+
+			// 計測中の処理
+			end_ = chrono::steady_clock::now();
+			sec_ = chrono::duration<double>(end_ - start_).count();
+
+			break;
+		case LogicName::RESULT:
+			if (input_->TriggerKey(DIK_RETURN)) {
+				logicType_ = LogicName::RANKING;
+
+				// スコア取得
+				string postRes = PostScoreAsync(score_).get();
+				string allScoresJson = GetAllScoresAsync().get();
+
+				try {
+					json j = json::parse(allScoresJson);
+					rankingText_ = "Ranking Top 5:\n";
+					int i = 0;
+					for (const auto& entry : j) {
+						int rankScore = entry["score"];
+						rankingText_ += to_string(i + 1) + ". " + to_string(rankScore) + "\n";
+						++i;
+					}
+				}
+				catch (const json::parse_error& e) {
+					rankingText_ = "[Ranking Error]\n";
+					rankingText_ += e.what();
+				}
+
+				break;
+			}
+			break;
+		case LogicName::RANKING:
+			if (input_->TriggerKey(DIK_SPACE)) {
+				logicType_ = LogicName::WAIT_START;
+
+				rankingText_.clear();
+
+				break;
+			}
+			break;
+		default:
+			break;
+	}
 
 	// パーティクルの更新処理
 	ParticleManager::GetInstance()->Update();
 
 	// スプライトの更新処理
 	
+
+	curl_global_cleanup();
 }
 
 // 描画
@@ -151,18 +232,50 @@ void GameScene::DebugUpdate() {
 // デバッグ描画
 void GameScene::DebugDraw() {
 	// 開発用UIの処理。実際に開発用のUIを出す場合はここをゲーム固有の処理に置き換える
-	ImGui::SetNextWindowPos(kDebugWindowPosSettings, ImGuiCond_Once);		// ウィンドウの座標(プログラム起動時のみ読み込み)
-	ImGui::SetNextWindowSize(kDebugWindowSizeSettings, ImGuiCond_Once);		// ウィンドウのサイズ(プログラム起動時のみ読み込み)
+	ImGui::SetNextWindowPos(kDebugWindowPosGame, ImGuiCond_Once);		// ウィンドウの座標(プログラム起動時のみ読み込み)
+	ImGui::SetNextWindowSize(kDebugWindowSizeGame, ImGuiCond_Once);		// ウィンドウのサイズ(プログラム起動時のみ読み込み)
 
-	ImGui::Begin("Settings");
-	// Camera
-	CameraManager::GetInstance()->DebugDraw();
+	ImGui::Begin("Game Draw");
+	
+	switch (logicType_) {
+		case LogicName::WAIT_START:
+			ImGui::Text("Press SPACE to start.");
+			break;
+		case LogicName::RUNNING:
+			ImGui::Text("STOP at 10.0sec. Press space to start.\n\n");
+			if (sec_ <= 7.0f) {
+				ImGui::Text("sec: %.6f", sec_);
+			}
+			else {
+				ImGui::Text("sec: ");
+			}
+			break;
+		case LogicName::RESULT:
+			ImGui::Text("Success!! Sec: %.6f Score: %4d", sec_, score_);
+			ImGui::Text("Press enter to ranking.");
+			break;
+		case LogicName::RANKING:
+			ImGui::Text("Press space to restart.");
+			break;
+		default:
+			break;
+	}
 
-	// Lighting
-	LightManager::GetInstance()->DebugDraw();
+	ImGui::End();
 
-	// パーティクル
-	ParticleManager::GetInstance()->ImGui();
+	ImGui::SetNextWindowPos(kDebugWindowPosRanking, ImGuiCond_Once);		// ウィンドウの座標(プログラム起動時のみ読み込み)
+	ImGui::SetNextWindowSize(kDebugWindowSizeRanking, ImGuiCond_Once);		// ウィンドウのサイズ(プログラム起動時のみ読み込み)
+
+	ImGui::Begin("Ranking Draw");
+
+	if (logicType_ == LogicName::RANKING) {
+		istringstream iss(rankingText_);
+		string line;
+		
+		while (getline(iss, line)) {
+			ImGui::Text("%s", line.c_str());
+		}
+	}
 
 	ImGui::End();
 }
@@ -177,4 +290,74 @@ void GameScene::LoadJsonFile([[maybe_unused]] const string& filePath) {
 	for (const JsonObjectData& objectData : levelData->objects) {
 		objectData;
 	}
+}
+
+/// レスポンスを格納するためのコールバック関数
+size_t GameScene::WriteCallback(void* c, size_t s, size_t n, std::string* o) {
+	o->append((char*)c, s * n);
+	return s * n;
+}
+
+/// スコア送信
+std::future<std::string> GameScene::PostScoreAsync(int score) {
+	return std::async(std::launch::async, [score]() -> std::string {
+		CURL* curl = curl_easy_init();
+		if (!curl) return "CURL初期化エラー";
+
+#pragma warning(push)
+#pragma warning(disable : 26495)
+		json body = json::object();
+		body["score"] = score;
+#pragma warning(pop)
+
+		string bodyStr = body.dump();
+
+		struct curl_slist* headers = nullptr;
+		headers = curl_slist_append(headers, "Content-Type: application/json");
+
+		string response;
+		curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:3000/scores");
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, bodyStr.c_str());
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+		CURLcode res = curl_easy_perform(curl);
+
+		// HTTPステータスコード取得
+		long httpCode = 0;
+		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+		curl_slist_free_all(headers);
+		curl_easy_cleanup(curl);
+
+		if (res != CURLE_OK) {
+			return string("送信エラー: ") + curl_easy_strerror(res);
+		}
+
+		// ステータスコード付きでレスポンスを返す
+		stringstream ss;
+		ss << "HTTP " << httpCode << ": " << response;
+		return ss.str();
+	});
+}
+
+/// スコア取得
+std::future<std::string> GameScene::GetAllScoresAsync() {
+	return async(launch::async, []() -> string {
+		CURL* curl = curl_easy_init();
+		if (!curl) return "CURL初期化エラー";
+
+		string response;
+		curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:3000/scores");
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+		CURLcode res = curl_easy_perform(curl);
+		curl_easy_cleanup(curl);
+
+		if (res != CURLE_OK) {
+			return string("取得エラー: ") + curl_easy_strerror(res);
+		}
+
+		return response;
+	});
 }
