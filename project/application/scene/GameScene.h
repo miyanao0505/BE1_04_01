@@ -2,6 +2,8 @@
 #include "BaseScene.h"
 #include <string>
 #include <vector>
+#include <future>
+#include <chrono>
 #include "Sprite.h"
 #include "ParticleEmitter.h"
 #include "LogicName.h"
@@ -9,13 +11,12 @@
 #ifdef _DEBUG
 #include <imgui.h>
 #endif // _DEBUG
-#include <future>
 
 using LogicType = LogicName;
 
 /// <summary>
 /// プレイヤーが実際に操作し、敵との戦闘や進行を行うゲーム本編のメインシーンを管理するクラス。
-/// BaseSceneを継承し、ゲームプレイ中のキャラクター制御、カメラ挙動、敵出現、演出などを統括します。
+/// WebAPIと通信し、ログイン・スコア送信・ランキング取得も担当する。
 /// </summary>
 class GameScene : public BaseScene
 {
@@ -25,10 +26,12 @@ private:
 	static constexpr MyBase::Vector3 kCameraTranslate{ 0.0f, 0.0f,0.0f };
 	static constexpr MyBase::Vector3 kCameraRotate{ 0.0f, 0.0f, 0.0f };
 
+	// WebAPI
+	static constexpr const char* kBaseURL = "https://swgame-c40ey33tu-k023g0050-1579.vercel.app";
 #ifdef _DEBUG
 	// ImGui
 	static constexpr ImVec2 kDebugWindowPosGame{ 20.0f, 350.0f };
-	static constexpr ImVec2 kDebugWindowSizeGame{ 350.0f, 150.0f };
+	static constexpr ImVec2 kDebugWindowSizeGame{ 350.0f, 200.0f };
 	static constexpr ImVec2 kDebugWindowPosRanking{ 900.0f, 20.0f };
 	static constexpr ImVec2 kDebugWindowSizeRanking{ 350.0f, 150.0f };
 #endif // _DEBUG
@@ -85,17 +88,33 @@ private:
 	static size_t WriteCallback(void* c, size_t s, size_t n, std::string* o);
 
 	/// <summary>
+	/// ログイン処理を非同期で行う
+	/// </summary>
+	/// <param name="name">ユーザー名</param>
+	/// <param name="password">パスワード</param>
+	/// <returns>非同期処理の結果としてのレスポンス文字列</returns>
+	std::future<std::string> LoginAsync(const std::string& name, const std::string& password);
+
+	/// <summary>
+	/// 新規登録処理
+	/// </summary>
+	/// <param name="name">ユーザー名</param>
+	/// <param name="password">パスワード</param>
+	/// <returns>非同期処理の結果としてのレスポンス文字列</returns>
+	std::future<std::string> SignUpAsync(const std::string& name, const std::string& password);
+
+	/// <summary>
 	/// スコア送信
 	/// </summary>
 	/// <param name="score">スコア</param>
 	/// <returns></returns>
-	std::future<std::string> PostScoreAsync(int score);
+	std::future<std::string> PostScoreAsync(int score, const std::string& token);
 
 	/// <summary>
-	/// 
+	/// ランキング取得
 	/// </summary>
 	/// <returns></returns>
-	std::future<std::string> GetAllScoresAsync();
+	std::future<std::string> GetAllScoresAsync(const std::string& token);
 
 private:	// メンバ変数
 #pragma region スプライト
@@ -113,6 +132,19 @@ private:	// メンバ変数
 	double sec_ = 0.0;
 	int score_ = 0;
 
+	// JWT
+	std::string token_;
+
+	// ログイン情報
+	std::string loginName_ = "test1";
+	std::string loginPassword_ = "password";
+
+	// ImGui入力用
+	char loginNameBuffer_[256] = "";
+	char loginPasswordBuffer_[256] = "";
+	std::string loginErrorText_;
+
+	// ランキング情報
 	std::string rankingText_;
 
 	// パーティクル

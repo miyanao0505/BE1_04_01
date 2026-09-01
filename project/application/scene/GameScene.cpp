@@ -47,7 +47,7 @@ void GameScene::Initialize() {
 #pragma endregion
 
 #pragma region ロジック
-	logicType_ = LogicName::WAIT_START;
+	logicType_ = LogicName::LOGIN;
 #pragma endregion ロジック
 
 
@@ -69,11 +69,15 @@ void GameScene::Initialize() {
 	AudioManager::GetInstance()->LoadAudioWave("fanfare.wav");
 #pragma endregion オーディオ
 
+	loginNameBuffer_[0] = '\0';
+	loginPasswordBuffer_[0] = '\0';
 	rankingText_.clear();
 
 	// 最初の更新
 	CameraManager::GetInstance()->GetCamera()->SetTranslate(kCameraTranslate);
 	CameraManager::GetInstance()->GetCamera()->Update();
+
+	curl_global_init(CURL_GLOBAL_DEFAULT);
 #pragma endregion シーン初期化
 }
 
@@ -92,6 +96,8 @@ void GameScene::Finalize() {
 #endif // _DEBUG
 
 	BaseScene::Finalize();
+
+	curl_global_cleanup();
 }
 
 // 毎フレーム更新
@@ -117,6 +123,8 @@ void GameScene::Update()
 
 	// ロジックの更新処理
 	switch (logicType_) {
+		case LogicName::LOGIN:
+			break;
 		case LogicName::WAIT_START:
 			
 			if (input_->TriggerKey(DIK_SPACE)) {
@@ -150,8 +158,11 @@ void GameScene::Update()
 				logicType_ = LogicName::RANKING;
 
 				// スコア取得
-				string postRes = PostScoreAsync(score_).get();
-				string allScoresJson = GetAllScoresAsync().get();
+				string postRes = PostScoreAsync(score_, token_).get();
+				string allScoresJson = GetAllScoresAsync(token_).get();
+
+				OutputDebugStringA(postRes.c_str());
+				OutputDebugStringA(allScoresJson.c_str());
 
 				try {
 					json j = json::parse(allScoresJson);
@@ -174,8 +185,6 @@ void GameScene::Update()
 		case LogicName::RANKING:
 			if (input_->TriggerKey(DIK_SPACE)) {
 				logicType_ = LogicName::WAIT_START;
-
-				rankingText_.clear();
 
 				break;
 			}
@@ -238,6 +247,75 @@ void GameScene::DebugDraw() {
 	ImGui::Begin("Game Draw");
 	
 	switch (logicType_) {
+		case LogicName::LOGIN:
+			ImGui::Text("Login\n");
+			ImGui::InputText("Name", loginNameBuffer_, sizeof(loginNameBuffer_));
+			ImGui::InputText("Password", loginPasswordBuffer_, sizeof(loginPasswordBuffer_), ImGuiInputTextFlags_Password);
+			ImGui::Text("\n");
+
+			if (ImGui::Button("Login")) {
+				loginErrorText_.clear();
+
+				loginName_ = loginNameBuffer_;
+				loginPassword_ = loginPasswordBuffer_;
+
+				// loginAsync()を呼ぶ
+				string result = LoginAsync(loginName_, loginPassword_).get();
+
+				try {
+					json j = json::parse(result);
+
+					if (j["login_status"] == "success") {
+						token_ = j["token"];
+						logicType_ = LogicName::WAIT_START;
+					}
+				}
+				catch (const json::parse_error& e) {
+					loginErrorText_ = "Login Error\n";
+					loginErrorText_ += e.what();
+				}
+			}
+			ImGui::Text("\n%s\n", loginErrorText_.c_str());
+
+			if (ImGui::Button("SignUp")) {
+				logicType_ = LogicName::SIGN_UP;
+			}
+
+			break;
+		case LogicName::SIGN_UP:
+			ImGui::Text("Sign Up\n");
+			ImGui::InputText("Name", loginNameBuffer_, sizeof(loginNameBuffer_));
+			ImGui::InputText("Password", loginPasswordBuffer_, sizeof(loginPasswordBuffer_), ImGuiInputTextFlags_Password);
+			ImGui::Text("\n");
+
+			if (ImGui::Button("Sign Up")) {
+				loginErrorText_.clear();
+
+				loginName_ = loginNameBuffer_;
+				loginPassword_ = loginPasswordBuffer_;
+
+				// SignUpAsync()を呼ぶ
+				string result = SignUpAsync(loginName_, loginPassword_).get();
+
+				try {
+					json j = json::parse(result);
+
+					if (j["login_status"] == "success") {
+						token_ = j["token"];
+						logicType_ = LogicName::WAIT_START;
+					}
+				}
+				catch (const json::parse_error& e) {
+					loginErrorText_ = "Login Error\n";
+					loginErrorText_ += e.what();
+				}
+			}
+			ImGui::Text("\n%s\n", loginErrorText_.c_str());
+
+			if (ImGui::Button("Login")) {
+				logicType_ = LogicName::LOGIN;
+			}
+			break;
 		case LogicName::WAIT_START:
 			ImGui::Text("Press SPACE to start.");
 			break;
@@ -298,11 +376,76 @@ size_t GameScene::WriteCallback(void* c, size_t s, size_t n, std::string* o) {
 	return s * n;
 }
 
-/// スコア送信
-std::future<std::string> GameScene::PostScoreAsync(int score) {
-	return std::async(std::launch::async, [score]() -> std::string {
+/// ログイン処理を非同期で行う
+std::future<std::string> GameScene::LoginAsync(const std::string& name, const std::string& password) {
+	return std::async(std::launch::async, [name, password]() {
+			CURL* curl = curl_easy_init();
+			if (!curl) throw runtime_error("CURL初期化エラー");
+
+			json body;
+			body["name"] = name;
+			body["password"] = password;
+			std::string bodyStr = body.dump();
+
+			std::string response;
+			struct curl_slist* headers = nullptr;
+			headers = curl_slist_append(headers, "Content-Type: application/json");
+
+			curl_easy_setopt(curl, CURLOPT_URL, (string(kBaseURL) + "/users/login").c_str());
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, bodyStr.c_str());
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+			
+			CURLcode res = curl_easy_perform(curl);
+			curl_slist_free_all(headers);
+			curl_easy_cleanup(curl);
+
+			if (res != CURLE_OK) {
+				throw runtime_error("送信エラー: " + string(curl_easy_strerror(res)));
+			}
+
+			return response;
+		});
+}
+
+/// 新規登録処理
+std::future<std::string> GameScene::SignUpAsync(const std::string& name, const std::string& password) {
+	return std::async(std::launch::async, [name, password]() {
 		CURL* curl = curl_easy_init();
-		if (!curl) return "CURL初期化エラー";
+		if (!curl) throw std::runtime_error("CURL 初期化エラー");
+
+		json body;
+		body["name"] = name;
+		body["password"] = password;
+		std::string bodyStr = body.dump();
+
+		std::string response;
+		struct curl_slist* headers = nullptr;
+		headers = curl_slist_append(headers, "Content-Type: application/json");
+
+		curl_easy_setopt(curl, CURLOPT_URL, (string(kBaseURL) + "/users/login").c_str());
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, bodyStr.c_str());
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+		CURLcode res = curl_easy_perform(curl);
+		curl_slist_free_all(headers);
+		curl_easy_cleanup(curl);
+
+		if (res != CURLE_OK) {
+			throw std::runtime_error("通信エラー: " + std::string(curl_easy_strerror(res)));
+		}
+		return response;
+		});
+}
+
+/// スコア送信
+std::future<std::string> GameScene::PostScoreAsync(int score, const std::string& token) {
+	return std::async(std::launch::async, [score, token]() {
+		CURL* curl = curl_easy_init();
+		if (!curl) throw runtime_error("CURL初期化エラー");
 
 #pragma warning(push)
 #pragma warning(disable : 26495)
@@ -314,9 +457,11 @@ std::future<std::string> GameScene::PostScoreAsync(int score) {
 
 		struct curl_slist* headers = nullptr;
 		headers = curl_slist_append(headers, "Content-Type: application/json");
+		std::string auth = "Authorization: Bearer " + token;
+		headers = curl_slist_append(headers, auth.c_str());
 
 		string response;
-		curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:3000/scores");
+		curl_easy_setopt(curl, CURLOPT_URL, (std::string(kBaseURL) + "/scores").c_str());
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, bodyStr.c_str());
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
@@ -330,7 +475,7 @@ std::future<std::string> GameScene::PostScoreAsync(int score) {
 		curl_easy_cleanup(curl);
 
 		if (res != CURLE_OK) {
-			return string("送信エラー: ") + curl_easy_strerror(res);
+			throw runtime_error("送信エラー: " + string(curl_easy_strerror(res)));
 		}
 
 		// ステータスコード付きでレスポンスを返す
@@ -341,21 +486,27 @@ std::future<std::string> GameScene::PostScoreAsync(int score) {
 }
 
 /// スコア取得
-std::future<std::string> GameScene::GetAllScoresAsync() {
-	return async(launch::async, []() -> string {
+std::future<std::string> GameScene::GetAllScoresAsync(const std::string& token) {
+	return async(launch::async, [token]() {
 		CURL* curl = curl_easy_init();
-		if (!curl) return "CURL初期化エラー";
+		if (!curl) throw runtime_error("CURL初期化エラー");
+
+		struct curl_slist* headers = nullptr;
+		std::string auth = "Authorization: Bearer " + token;
+		headers = curl_slist_append(headers, auth.c_str());
 
 		string response;
-		curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:3000/scores");
+		curl_easy_setopt(curl, CURLOPT_URL, (std::string(kBaseURL) + "/scores").c_str());
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
 		CURLcode res = curl_easy_perform(curl);
+		curl_slist_free_all(headers);
 		curl_easy_cleanup(curl);
 
 		if (res != CURLE_OK) {
-			return string("取得エラー: ") + curl_easy_strerror(res);
+			throw runtime_error("送信エラー: " + string(curl_easy_strerror(res)));
 		}
 
 		return response;
