@@ -8,7 +8,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	auto game = std::make_unique<MyGame>();
 
 	// ゲームループ
-	game->Run(L"BE1_0402");
+	game->Run(L"10s count stopwatch game");
 
 	return 0;
 }
